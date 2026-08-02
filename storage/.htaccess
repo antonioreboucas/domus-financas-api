@@ -1,0 +1,9 @@
+# Bloqueia qualquer acesso via navegador/HTTP a esta pasta — só é lida/escrita
+# pelo próprio PHP (RateLimiter), nunca deve ser servida diretamente.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

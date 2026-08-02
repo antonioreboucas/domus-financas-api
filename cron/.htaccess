@@ -1,0 +1,10 @@
+# Bloqueia qualquer acesso via navegador/HTTP a esta pasta. O cron job do
+# cPanel invoca os scripts via CLI (linha de comando), não passa pelo Apache,
+# então esta regra não afeta o funcionamento do cron.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

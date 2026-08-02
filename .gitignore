@@ -1,0 +1,3 @@
+config.php
+cron/*.log
+*.zip
