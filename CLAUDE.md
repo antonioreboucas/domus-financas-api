@@ -146,9 +146,9 @@ Entidades registradas (`{Entity}` → tabela):
 
 | Entity | Tabela | Campos |
 |---|---|---|
-| `Income` | `incomes` | `nome, valor, freq` (`Mensal｜Variável｜Anual`) |
-| `ExpenseCategory` | `expense_categories` | `nome, limite, gasto` |
-| `Account` | `accounts` | `nome, valor, vencimento, tipo` (`recorrente｜nao_recorrente`), `status` (`pendente｜pago` — **nunca** `atrasado`, ver abaixo), `categoria` (string livre, opcional — mesmo padrão de `transactions.categoria`, não é FK), `card_id` (opcional, FK pra `cards.id`, `ON DELETE SET NULL` — conta paga com aquele cartão) |
+| `Income` | `incomes` | `nome, valor, freq` (`Mensal｜Variável｜Anual`), `data` — mês/ano a que pertence, ver "Filtro de período" abaixo |
+| `ExpenseCategory` | `expense_categories` | `nome, limite` — **sem `gasto`**: calculado no frontend a partir de `transactions`, ver "Filtro de período" |
+| `Account` | `accounts` | `nome, valor, vencimento, tipo` (`recorrente｜nao_recorrente`), `status` (`pendente｜pago` — **nunca** `atrasado`, ver abaixo), `categoria` (string livre, opcional — mesmo padrão de `transactions.categoria`, não é FK), `card_id` (opcional, FK pra `cards.id`, `ON DELETE SET NULL` — conta paga com aquele cartão), `grupo_recorrencia` (opcional, liga instâncias mensais da mesma conta recorrente entre si, ver "Filtro de período") |
 | `Card` | `cards` | `nome, bandeira, limite, fatura, vencimento` |
 | `Goal` | `goals` | `chave, label, atual, meta, color` |
 | `Alert` | `alerts` | `nivel` (`alta｜media｜baixa`), `titulo, descricao` — só GET/DELETE pelo frontend; quem cria é `cron/daily_alerts.php` |
@@ -160,6 +160,44 @@ derivado comparando `vencimento` com a data atual — no frontend em
 `frontend/src/lib/format.js#effectiveStatus()`, e em `cron/daily_alerts.php`
 pro alerta diário. Nunca persista `'atrasado'` como valor de status — um
 valor gravado ficaria desatualizado sem um job rodando toda hora.
+
+## Filtro de período (mês/ano)
+
+O app tem um seletor de mês/ano global (topo das telas principais) que
+decide "de qual mês são esses valores". **Toda essa lógica vive no
+frontend** (`frontend/src/context/FinanceContext.jsx`) — a API sempre
+devolve as linhas cruas, sem filtrar por período; quem decide o que
+mostrar pro mês selecionado é o cliente. Documentado aqui porque muda o
+que os campos acima significam:
+
+- **`incomes`**: `freq='Mensal'` conta como ativa em todo mês
+  `>= data` (recorrência pra frente, sem data final). `freq='Variável'`
+  ou `'Anual'` só conta no mês exato de `data`.
+- **`expense_categories`**: `limite` é configuração contínua (não muda
+  por mês). O "gasto" do mês selecionado é `SUM(transactions.valor)`
+  (só as negativas, valor absoluto) onde `transactions.categoria = expense_categories.nome`
+  e `transactions.data` cai no mês/ano selecionado.
+- **`accounts` recorrentes**: cada linha real é a instância de UM mês
+  específico (seu próprio `vencimento` diz qual). Pra um mês que ainda
+  não tem instância real de um `grupo_recorrencia`, o frontend **projeta
+  uma linha virtual** (não existe no banco, `id: null`) usando a instância
+  mais antiga do grupo como modelo (nome/valor/categoria/card_id), com o
+  mesmo dia-do-mês projetado pro mês selecionado e `status='pendente'`.
+  Essa projeção só acontece pra mês `>=` o mês da instância mais antiga do
+  grupo (uma conta recorrente não "existe" antes de ter sido criada). A
+  linha vira real (`POST /entities/Account` de verdade, com o mesmo
+  `grupo_recorrencia`) só quando o usuário interage com ela — marcar como
+  paga ou editar. Contas `nao_recorrente` nunca são projetadas.
+- **`cards`/`goals`**: visíveis a partir do mês/ano de `created_date`
+  (um cartão criado em setembro não aparece revisitando agosto). O valor
+  mostrado (`fatura`, `atual`) é sempre o valor atual real — não existe
+  reconstrução histórica de fatura/aporte por mês passado, só a data de
+  criação decide a partir de quando a linha aparece.
+- **`transactions`**: filtradas direto por `data` caindo no mês/ano
+  selecionado — é o caso mais simples, já tinha o campo certo.
+- **`alerts`** e **`shared_expenses`**: não passam pelo filtro de período,
+  sempre mostram o estado atual independente do mês selecionado (alertas
+  são sobre agora; despesas compartilhadas não têm essa noção ainda).
 
 ## Ações que não são CRUD genérico — `routes/domus.php`
 
@@ -185,7 +223,8 @@ Roda via cron (ver `README.md`), não pela API HTTP. Pra cada usuário ativo:
 
 1. Contas `pendente` atrasadas (nível `alta`) ou vencendo em ≤3 dias (nível
    `media`) — mesmo corte de urgência usado no frontend.
-2. Categorias com `gasto > limite` (nível `media`).
+2. Categorias com gasto do **mês corrente** (`SUM(transactions)` agrupado
+   por categoria, mês de `CURDATE()`) acima do `limite` (nível `media`).
 3. Faturas de cartão vencendo em ≤8 dias (nível `baixa`).
 
 Upsert por `(user_id, source_key)` — **não por título**: o título muda todo
@@ -226,7 +265,10 @@ verdade), exceto `reports/monthly` que exige `GROUP BY` em SQL:
   `≥95%` vermelho, `≥75%` amarelo, senão verde
 - prioridade de conta: atrasado ou `≤3 dias` → ALTA, `≤8 dias` → MÉDIA,
   senão BAIXA (mesmo corte usado em `daily_alerts.php`)
-- insight "onde economizar": categorias com `gasto > limite * 0.85`
+- insight "onde economizar": categorias com gasto do mês `> limite * 0.85`
+- toda a lógica de "qual mês/ano é isso" (recorrência de renda/conta,
+  projeção de conta recorrente, gasto por categoria) — ver "Filtro de
+  período" acima
 
 ## Segurança
 

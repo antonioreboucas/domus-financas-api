@@ -102,8 +102,19 @@ foreach ($users as $user) {
         }
     }
 
-    // Categorias de gasto acima do limite mensal.
-    $stmt = $db->prepare('SELECT * FROM expense_categories WHERE user_id = ? AND gasto > limite');
+    // Categorias de gasto acima do limite no mês corrente — expense_categories
+    // não guarda mais "gasto" (ver CLAUDE.md), soma transactions do mês.
+    $stmt = $db->prepare(
+        "SELECT ec.id, ec.nome, ec.limite,
+                COALESCE(SUM(CASE WHEN t.valor < 0 THEN -t.valor ELSE 0 END), 0) AS gasto
+         FROM expense_categories ec
+         LEFT JOIN transactions t
+           ON t.user_id = ec.user_id AND t.categoria = ec.nome
+          AND YEAR(t.data) = YEAR(CURDATE()) AND MONTH(t.data) = MONTH(CURDATE())
+         WHERE ec.user_id = ?
+         GROUP BY ec.id, ec.nome, ec.limite
+         HAVING gasto > ec.limite"
+    );
     $stmt->execute([$userId]);
     foreach ($stmt->fetchAll() as $cat) {
         $key = "category:{$cat['id']}:limite";

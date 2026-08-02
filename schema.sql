@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS incomes (
   nome VARCHAR(120) NOT NULL,
   valor DECIMAL(12,2) NOT NULL,
   freq ENUM('Mensal','Variável','Anual') NOT NULL DEFAULT 'Mensal',
+  -- Mês/ano a que a renda pertence. 'Mensal' conta como ativa em todo mês
+  -- >= este (recorrência pra frente); 'Variável'/'Anual' só no mês exato —
+  -- ver deriveViewModel() em frontend/src/context/FinanceContext.jsx, é lá
+  -- que essa regra é aplicada (a API só guarda a data, não filtra).
+  data DATE NOT NULL,
   created_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_incomes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -42,7 +47,11 @@ CREATE TABLE IF NOT EXISTS expense_categories (
   user_id CHAR(36) NOT NULL,
   nome VARCHAR(120) NOT NULL,
   limite DECIMAL(12,2) NOT NULL DEFAULT 0,
-  gasto DECIMAL(12,2) NOT NULL DEFAULT 0,
+  -- Sem coluna "gasto": o valor gasto no mês é sempre a soma de
+  -- transactions daquela categoria no período selecionado, calculada no
+  -- frontend (nunca fica desatualizado, nunca precisa de dois writes pra
+  -- criar um gasto). limite continua configuração contínua — não é
+  -- redefinido todo mês.
   created_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_expense_categories_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -65,11 +74,20 @@ CREATE TABLE IF NOT EXISTS accounts (
   -- relação real entre duas entidades primárias, não uma legenda solta.
   -- NULL = conta não associada a nenhum cartão (pix, boleto, débito, etc).
   card_id CHAR(36) NULL,
+  -- Liga todas as instâncias mensais de UMA conta recorrente (mesmo
+  -- "Aluguel" em agosto, setembro, outubro...) — gerado uma vez (UUID) na
+  -- criação e reaproveitado em cada mês futuro. NULL pra não_recorrente,
+  -- que nunca se repete. O frontend projeta um "instância virtual" pro mês
+  -- selecionado quando o grupo não tem linha real ainda naquele mês; só
+  -- vira linha de verdade (INSERT) quando o usuário marca como paga ou
+  -- edita — ver materializeAccount() em FinanceContext.jsx.
+  grupo_recorrencia CHAR(36) NULL,
   created_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_accounts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_accounts_user (user_id, status, vencimento),
-  INDEX idx_accounts_card (card_id)
+  INDEX idx_accounts_card (card_id),
+  INDEX idx_accounts_grupo (user_id, grupo_recorrencia)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS cards (
