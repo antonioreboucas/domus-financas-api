@@ -36,9 +36,16 @@ php -S localhost:8000
 ```
 
 Antes disso: importe `schema.sql` (e opcionalmente `seed.sql`) num MySQL
-local e copie `config.example.php` para `config.php`, preenchendo
-host/usuário/senha do banco local e `cors_allowed_origins` (inclua a origem
-do Vite, ex. `http://localhost:5173`).
+local e copie `config.example.php` para **`config.local.php`** (não
+`config.php`!) na raiz de `api/`, preenchendo host/usuário/senha do banco
+local e `cors_allowed_origins` (inclua a origem do Vite, ex.
+`http://localhost:5173`).
+
+`config.local.php`, quando existe, tem prioridade sobre `config.php` (ver
+`lib/Config.php`) — é assim que rodar `php -S`/`php cron/...` na sua máquina
+nunca acaba batendo sem querer no banco de produção só porque `config.php`
+(o arquivo que você sobe pro servidor) está com as credenciais reais. Ele é
+git-ignorado, igual `config.php`.
 
 Rode os testes com `php tests/run.php`.
 

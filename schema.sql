@@ -57,10 +57,19 @@ CREATE TABLE IF NOT EXISTS accounts (
   vencimento DATE NOT NULL,
   tipo ENUM('recorrente','nao_recorrente') NOT NULL DEFAULT 'recorrente',
   status ENUM('pendente','pago') NOT NULL DEFAULT 'pendente',
+  -- Livre por nome, igual transactions.categoria — não é FK pra
+  -- expense_categories de propósito (mesma convenção do resto do schema:
+  -- ver comentário de categoria_id em produtos no boilerplate original).
+  categoria VARCHAR(120) NULL,
+  -- Este sim é FK de verdade: "esta conta é paga com este cartão" é uma
+  -- relação real entre duas entidades primárias, não uma legenda solta.
+  -- NULL = conta não associada a nenhum cartão (pix, boleto, débito, etc).
+  card_id CHAR(36) NULL,
   created_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_accounts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  INDEX idx_accounts_user (user_id, status, vencimento)
+  INDEX idx_accounts_user (user_id, status, vencimento),
+  INDEX idx_accounts_card (card_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS cards (
@@ -76,6 +85,11 @@ CREATE TABLE IF NOT EXISTS cards (
   CONSTRAINT fk_cards_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_cards_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- accounts.card_id só pode ser declarado depois que `cards` existe (ordem de
+-- criação das tabelas acima).
+ALTER TABLE accounts
+  ADD CONSTRAINT fk_accounts_card FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS goals (
   id CHAR(36) PRIMARY KEY,

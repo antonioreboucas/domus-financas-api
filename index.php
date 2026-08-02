@@ -7,6 +7,7 @@
 // comportamento em qualquer host, independente da config dele.
 ini_set('serialize_precision', -1);
 
+require_once __DIR__ . '/lib/Config.php';
 require_once __DIR__ . '/lib/Database.php';
 require_once __DIR__ . '/lib/Response.php';
 require_once __DIR__ . '/lib/Jwt.php';
@@ -17,7 +18,7 @@ require_once __DIR__ . '/lib/EntityRegistry.php';
 require_once __DIR__ . '/lib/EntityController.php';
 require_once __DIR__ . '/lib/Mailer.php';
 
-$config = require __DIR__ . '/config.php';
+$config = Config::load();
 
 Response::cors($config['cors_allowed_origins']);
 

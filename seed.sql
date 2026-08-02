@@ -35,17 +35,23 @@ INSERT INTO expense_categories (id, user_id, nome, limite, gasto) VALUES
   (UUID(), @uid, 'Saúde', 400, 190),
   (UUID(), @uid, 'Outros', 300, 265);
 
-INSERT INTO accounts (id, user_id, nome, valor, vencimento, tipo, status) VALUES
-  (UUID(), @uid, 'Aluguel', 1800, '2026-08-05', 'recorrente', 'pendente'),
-  (UUID(), @uid, 'Internet', 120, '2026-08-10', 'recorrente', 'pendente'),
-  (UUID(), @uid, 'Energia elétrica', 280, '2026-07-28', 'recorrente', 'pendente'),
-  (UUID(), @uid, 'Plano de saúde', 340, '2026-08-15', 'recorrente', 'pendente'),
-  (UUID(), @uid, 'Conserto do carro', 650, '2026-08-03', 'nao_recorrente', 'pendente'),
-  (UUID(), @uid, 'Streaming', 60, '2026-08-12', 'recorrente', 'pago');
+-- IDs fixos (não UUID()) só nos cartões, pra poder referenciar de
+-- accounts.card_id logo abaixo — mostra a associação conta<->cartão já
+-- funcionando de cara no dado de exemplo.
+SET @card_nubank = 'b0000000-0000-4000-8000-000000000001';
+SET @card_inter = 'b0000000-0000-4000-8000-000000000002';
 
 INSERT INTO cards (id, user_id, nome, bandeira, limite, fatura, vencimento) VALUES
-  (UUID(), @uid, 'Nubank', 'Mastercard', 5000, 2340, '2026-08-08'),
-  (UUID(), @uid, 'Inter', 'Visa', 3000, 980, '2026-08-18');
+  (@card_nubank, @uid, 'Nubank', 'Mastercard', 5000, 2340, '2026-08-08'),
+  (@card_inter, @uid, 'Inter', 'Visa', 3000, 980, '2026-08-18');
+
+INSERT INTO accounts (id, user_id, nome, valor, vencimento, tipo, categoria, card_id, status) VALUES
+  (UUID(), @uid, 'Aluguel', 1800, '2026-08-05', 'recorrente', 'Moradia', NULL, 'pendente'),
+  (UUID(), @uid, 'Internet', 120, '2026-08-10', 'recorrente', 'Moradia', @card_nubank, 'pendente'),
+  (UUID(), @uid, 'Energia elétrica', 280, '2026-07-28', 'recorrente', 'Moradia', NULL, 'pendente'),
+  (UUID(), @uid, 'Plano de saúde', 340, '2026-08-15', 'recorrente', 'Saúde', NULL, 'pendente'),
+  (UUID(), @uid, 'Conserto do carro', 650, '2026-08-03', 'nao_recorrente', 'Transporte', @card_inter, 'pendente'),
+  (UUID(), @uid, 'Streaming', 60, '2026-08-12', 'recorrente', 'Lazer', @card_nubank, 'pago');
 
 INSERT INTO goals (id, user_id, chave, label, atual, meta, color) VALUES
   (UUID(), @uid, 'economia', 'Meta de Economia', 4200, 10000, 'var(--accent)'),

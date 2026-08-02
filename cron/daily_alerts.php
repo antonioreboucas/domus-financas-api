@@ -13,6 +13,7 @@ if (!empty($_SERVER['REQUEST_METHOD'])) {
 // Ver comentário equivalente em index.php.
 ini_set('serialize_precision', -1);
 
+require_once __DIR__ . '/../lib/Config.php';
 require_once __DIR__ . '/../lib/Database.php';
 require_once __DIR__ . '/../lib/Uuid.php';
 require_once __DIR__ . '/../lib/Mailer.php';
@@ -63,7 +64,7 @@ function pruneResolvedAlerts(PDO $db, string $userId, array $currentKeys): void
     $stmt->execute([$userId, ...$currentKeys]);
 }
 
-$config = require __DIR__ . '/../config.php';
+$config = Config::load();
 $db = Database::get();
 $today = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
 

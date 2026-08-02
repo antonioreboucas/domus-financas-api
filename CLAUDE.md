@@ -23,13 +23,15 @@ para qualquer mudança futura no backend.
 ```
 api/
   index.php              # front controller — roteamento
-  config.example.php      # template de config (copiar pra config.php, git-ignorado)
-  config.php               # segredos locais (NUNCA commitar)
+  config.example.php      # template (copiar pra config.php E/OU config.local.php)
+  config.php               # config de PRODUÇÃO — é isso que sobe pro HostGator (NUNCA commitar)
+  config.local.php          # override local — tem prioridade quando existe (NUNCA commitar)
   schema.sql                # CREATE TABLE
   seed.sql                   # dados de exemplo (usuário demo@domusfinancas.com.br / senha123)
   .htaccess                   # rewrite tudo pra index.php (Apache/cPanel)
   lib/
-    Database.php    # conexão PDO (singleton)
+    Config.php       # Config::load() — config.local.php se existir, senão config.php
+    Database.php    # conexão PDO (singleton), usa Config::load()
     Response.php     # Response::json()/error() — envelope flat, ver abaixo
     Jwt.php           # JWT HS256 minimalista (sem lib externa)
     Uuid.php           # UUID v4 (todo id de tabela é CHAR(36))
@@ -52,6 +54,14 @@ api/
 Rodar localmente: `php -S localhost:8000` (a partir de `api/`). O
 `frontend/vite.config.js` tem um proxy de `/api` → `http://localhost:8000`
 para uso com `VITE_API_MODE=http`.
+
+> **`config.php` costuma ter credenciais de produção** (é o arquivo pensado
+> pra subir pro HostGator — ver README "Deploy"). Todo script rodado
+> localmente (`php -S`, `php cron/*.php`) passa por `Config::load()`, que
+> usa `config.local.php` no lugar dele quando esse arquivo existe — crie um
+> a partir de `config.example.php` com credenciais do banco local antes de
+> rodar qualquer coisa nesta pasta na sua máquina. Sem isso, testar
+> localmente pode acabar lendo/escrevendo no banco de produção de verdade.
 
 ## Autenticação
 
@@ -138,7 +148,7 @@ Entidades registradas (`{Entity}` → tabela):
 |---|---|---|
 | `Income` | `incomes` | `nome, valor, freq` (`Mensal｜Variável｜Anual`) |
 | `ExpenseCategory` | `expense_categories` | `nome, limite, gasto` |
-| `Account` | `accounts` | `nome, valor, vencimento, tipo` (`recorrente｜nao_recorrente`), `status` (`pendente｜pago` — **nunca** `atrasado`, ver abaixo) |
+| `Account` | `accounts` | `nome, valor, vencimento, tipo` (`recorrente｜nao_recorrente`), `status` (`pendente｜pago` — **nunca** `atrasado`, ver abaixo), `categoria` (string livre, opcional — mesmo padrão de `transactions.categoria`, não é FK), `card_id` (opcional, FK pra `cards.id`, `ON DELETE SET NULL` — conta paga com aquele cartão) |
 | `Card` | `cards` | `nome, bandeira, limite, fatura, vencimento` |
 | `Goal` | `goals` | `chave, label, atual, meta, color` |
 | `Alert` | `alerts` | `nivel` (`alta｜media｜baixa`), `titulo, descricao` — só GET/DELETE pelo frontend; quem cria é `cron/daily_alerts.php` |
