@@ -117,6 +117,13 @@ CREATE TABLE IF NOT EXISTS goals (
   atual DECIMAL(12,2) NOT NULL DEFAULT 0,
   meta DECIMAL(12,2) NOT NULL,
   color VARCHAR(30) NOT NULL DEFAULT 'var(--accent)',
+  -- 'continua' (padrão): meta de longo prazo, sempre visível, ignora o
+  -- filtro de mês/ano por completo (ex: Fundo de Emergência). 'mensal'/
+  -- 'anual': só fica visível a partir do mês/ano em que foi criada — não
+  -- existe reset automático de `atual` por período ainda (isso exigiria
+  -- guardar histórico de aportes, que essa tabela não tem); por enquanto a
+  -- diferença é só essa visibilidade. Ver "Filtro de período" no CLAUDE.md.
+  periodicidade ENUM('continua','mensal','anual') NOT NULL DEFAULT 'continua',
   created_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_goals_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

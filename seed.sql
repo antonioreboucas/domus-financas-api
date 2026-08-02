@@ -61,10 +61,12 @@ INSERT INTO accounts (id, user_id, nome, valor, vencimento, tipo, categoria, car
   (UUID(), @uid, 'Conserto do carro', 650, '2026-08-03', 'nao_recorrente', 'Transporte', @card_inter, NULL, 'pendente'),
   (UUID(), @uid, 'Streaming', 60, '2026-08-12', 'recorrente', 'Lazer', @card_nubank, UUID(), 'pago');
 
-INSERT INTO goals (id, user_id, chave, label, atual, meta, color) VALUES
-  (UUID(), @uid, 'economia', 'Meta de Economia', 4200, 10000, 'var(--accent)'),
-  (UUID(), @uid, 'investimento', 'Meta de Investimento', 8600, 30000, 'var(--blue)'),
-  (UUID(), @uid, 'emergencia', 'Fundo de Emergência', 3800, 15000, 'var(--warning)');
+-- 'continua': as 3 metas de exemplo são de longo prazo, sempre visíveis
+-- independente do mês selecionado (ver goals.periodicidade no schema.sql).
+INSERT INTO goals (id, user_id, chave, label, atual, meta, color, periodicidade) VALUES
+  (UUID(), @uid, 'economia', 'Meta de Economia', 4200, 10000, 'var(--accent)', 'continua'),
+  (UUID(), @uid, 'investimento', 'Meta de Investimento', 8600, 30000, 'var(--blue)', 'continua'),
+  (UUID(), @uid, 'emergencia', 'Fundo de Emergência', 3800, 15000, 'var(--warning)', 'continua');
 
 -- Sem seed de alerts de propósito: rode `php cron/daily_alerts.php` depois
 -- deste arquivo (com a data do sistema em 2026-08-01 ou depois) e ele gera

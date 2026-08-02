@@ -150,7 +150,7 @@ Entidades registradas (`{Entity}` → tabela):
 | `ExpenseCategory` | `expense_categories` | `nome, limite` — **sem `gasto`**: calculado no frontend a partir de `transactions`, ver "Filtro de período" |
 | `Account` | `accounts` | `nome, valor, vencimento, tipo` (`recorrente｜nao_recorrente`), `status` (`pendente｜pago` — **nunca** `atrasado`, ver abaixo), `categoria` (string livre, opcional — mesmo padrão de `transactions.categoria`, não é FK), `card_id` (opcional, FK pra `cards.id`, `ON DELETE SET NULL` — conta paga com aquele cartão), `grupo_recorrencia` (opcional, liga instâncias mensais da mesma conta recorrente entre si, ver "Filtro de período") |
 | `Card` | `cards` | `nome, bandeira, limite, fatura, vencimento` |
-| `Goal` | `goals` | `chave, label, atual, meta, color` |
+| `Goal` | `goals` | `chave, label, atual, meta, color`, `periodicidade` (`continua｜mensal｜anual`, default `continua`) — ver "Filtro de período" |
 | `Alert` | `alerts` | `nivel` (`alta｜media｜baixa`), `titulo, descricao` — só GET/DELETE pelo frontend; quem cria é `cron/daily_alerts.php` |
 | `Transaction` | `transactions` | `nome, categoria, valor, data` (`valor` positivo = entrada, negativo = saída) |
 | `SharedExpense` | `shared_expenses` | `nome, valor, dividido` (bool) |
@@ -188,11 +188,16 @@ que os campos acima significam:
   linha vira real (`POST /entities/Account` de verdade, com o mesmo
   `grupo_recorrencia`) só quando o usuário interage com ela — marcar como
   paga ou editar. Contas `nao_recorrente` nunca são projetadas.
-- **`cards`/`goals`**: visíveis a partir do mês/ano de `created_date`
-  (um cartão criado em setembro não aparece revisitando agosto). O valor
-  mostrado (`fatura`, `atual`) é sempre o valor atual real — não existe
-  reconstrução histórica de fatura/aporte por mês passado, só a data de
-  criação decide a partir de quando a linha aparece.
+- **`cards`**: visíveis a partir do mês/ano de `created_date` (um cartão
+  criado em setembro não aparece revisitando agosto). `fatura` é sempre o
+  valor atual real — sem reconstrução histórica por mês passado.
+- **`goals`**: por padrão (`periodicidade='continua'`) **ignoram o filtro
+  de período por completo** — uma meta de longo prazo (Fundo de
+  Emergência) aparece sempre, em qualquer mês. Só `periodicidade='mensal'`
+  ou `'anual'` respeita o mês/ano de `created_date` (mesma regra de
+  `cards` acima). Em nenhum dos dois casos existe reset automático de
+  `atual` por período — precisaria de histórico de aportes, que esta
+  tabela não guarda; a diferença de periodicidade é só de visibilidade.
 - **`transactions`**: filtradas direto por `data` caindo no mês/ano
   selecionado — é o caso mais simples, já tinha o campo certo.
 - **`alerts`** e **`shared_expenses`**: não passam pelo filtro de período,
